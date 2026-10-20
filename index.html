@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Calendario Digiuno</title>
+<meta name="theme-color" content="#D2D3D1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#161715" media="(prefers-color-scheme: dark)">
+<meta name="description" content="Timer e calendario del digiuno intermittente">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Digiuno">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: one narrow column of soft cards — "what to do now" on top, this week's checklist, then folded info and settings. */
+:root{
+  --bg:#D2D3D1; --card-a:#F5F6F4; --card-b:#EEF1EF; --card-c:#F1F3E3; --surface:#FFFFFF; --sunk:rgba(20,22,18,.055);
+  --ink:#121311; --muted:#76786F; --line:rgba(20,22,18,.08);
+  --lime:#DDF6A9; --lime-ink:#2B3A10; --fast:#9FDB3C; --warm:#F7EDCB; --warm-ink:#7A5A0E; --danger:#C2412F;
+  --shadow:0 24px 48px -18px rgba(30,32,28,.22), 0 2px 6px rgba(30,32,28,.05);
+  --f-display:"Inter Tight", "SF Pro Display", system-ui, sans-serif;
+  --f-body:"Inter", "SF Pro Text", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#161715; --card-a:#232522; --card-b:#20221F; --card-c:#272A1F; --surface:#30332E; --sunk:rgba(255,255,255,.06);
+  --ink:#F1F2EE; --muted:#9B9E97; --line:rgba(255,255,255,.08);
+  --lime:#3A4A1C; --lime-ink:#DDF6A9; --fast:#A9E34B; --warm:#3A3219; --warm-ink:#F0C96A; --danger:#F08A7A;
+  --shadow:0 24px 48px -18px rgba(0,0,0,.6); color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#161715; --card-a:#232522; --card-b:#20221F; --card-c:#272A1F; --surface:#30332E; --sunk:rgba(255,255,255,.06);
+  --ink:#F1F2EE; --muted:#9B9E97; --line:rgba(255,255,255,.08);
+  --lime:#3A4A1C; --lime-ink:#DDF6A9; --fast:#A9E34B; --warm:#3A3219; --warm-ink:#F0C96A; --danger:#F08A7A;
+  --shadow:0 24px 48px -18px rgba(0,0,0,.6); color-scheme:dark }
+
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.wrap{max-width:560px;margin:0 auto;padding-block:24px 56px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));display:flex;flex-direction:column;gap:18px}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-inline:4px}
+h1{font-family:var(--f-display);font-weight:600;font-size:22px;letter-spacing:-.02em;margin:0;white-space:nowrap}
+.sync{font-size:12.5px;display:flex;white-space:nowrap;align-items:center;gap:6px;color:var(--muted)}
+.sync i{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.sync.on i{background:var(--fast)} .sync.local i{background:#E8B93F}
+.card{background:linear-gradient(150deg,var(--card-a) 0%,var(--card-b) 48%,var(--card-c) 100%);border-radius:32px;padding:24px;box-shadow:var(--shadow)}
+@media (max-width:420px){.card{padding:20px;border-radius:26px}}
+.badge{display:inline-flex;background:var(--lime);color:var(--lime-ink);font-family:var(--f-display);font-weight:500;font-size:14px;padding:6px 13px;border-radius:999px}
+h2{font-family:var(--f-display);font-weight:600;letter-spacing:-.025em;margin:0;text-wrap:balance}
+.big{font-size:clamp(28px,7vw,36px);line-height:1.08;margin:14px 0 6px}
+.muted{color:var(--muted)}
+.times{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:18px 0}
+.t{background:var(--surface);border-radius:20px;padding:12px 14px}
+.t span{font-size:12.5px;color:var(--muted)}
+.t b{display:block;font-family:var(--f-display);font-weight:600;font-size:24px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.t small{font-size:12.5px;color:var(--muted)}
+.bar{height:10px;border-radius:999px;background:var(--sunk);overflow:hidden;margin:16px 0 4px}
+.bar i{display:block;height:100%;background:var(--fast);border-radius:999px;transition:width .6s ease}
+.btn{appearance:none;border:0;background:var(--surface);color:var(--ink);font:inherit;font-family:var(--f-display);font-weight:600;font-size:18px;padding:16px 24px;border-radius:999px;cursor:pointer;display:flex;width:100%;align-items:center;justify-content:center;gap:10px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.btn::after{content:"→";font-weight:400;font-size:20px}
+.btn:hover{transform:translateY(-1px)}
+.link{appearance:none;border:0;background:none;color:var(--muted);font:inherit;font-size:14px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:8px 2px}
+.link:hover{color:var(--ink)}
+.links{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:6px}
+.edit{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+input{font:inherit;color:var(--ink);background:var(--surface);border:0;border-radius:14px;padding:10px 12px;box-shadow:inset 0 0 0 1px var(--line);min-width:0}
+.edit input{flex:1}
+.mini{appearance:none;border:0;background:var(--ink);color:var(--bg);font:inherit;font-weight:600;font-size:14px;padding:10px 16px;border-radius:999px;cursor:pointer}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--fast);outline-offset:2px}
+
+.head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+.head h2{font-size:21px}
+.days{display:flex;flex-direction:column;gap:6px}
+.day{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;background:var(--surface);border-radius:20px;padding:10px 10px 10px 14px}
+.day.today{box-shadow:inset 0 0 0 2px var(--ink)}
+.day.past{background:transparent;box-shadow:inset 0 0 0 1px var(--line)}
+.day .d{font-family:var(--f-display);line-height:1.1}
+.day .d b{display:block;font-size:19px;font-weight:600}
+.day .d small{font-size:12px;color:var(--muted)}
+.day .w{min-width:0;font-size:14px}
+.day .w b{font-family:var(--f-display);font-weight:600;font-variant-numeric:tabular-nums}
+.day .w small{display:block;color:var(--muted);font-size:12.5px}
+.chk{appearance:none;border:0;width:44px;height:44px;border-radius:50%;background:var(--sunk);color:var(--muted);font-size:18px;font-weight:700;cursor:pointer;display:grid;place-items:center}
+.chk.on{background:var(--lime);color:var(--lime-ink)}
+.chk.miss{background:var(--warm);color:var(--warm-ink)}
+.chk.run{background:var(--fast);color:var(--lime-ink)}
+.chk:disabled{cursor:default}
+.legend{font-size:12.5px;color:var(--muted);margin:10px 0 0}
+.score{font-family:var(--f-display);font-weight:600;font-size:15px}
+
+details.card{padding:0}
+details summary{list-style:none;cursor:pointer;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--f-display);font-weight:600;font-size:18px;letter-spacing:-.01em}
+details summary::-webkit-details-marker{display:none}
+details summary::after{content:"+";width:34px;height:34px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-weight:400;font-size:20px;flex:none}
+details[open] summary::after{content:"–"}
+.fold{padding:0 24px 22px}
+.fold ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:7px}
+.fold h3{font-family:var(--f-display);font-size:15px;font-weight:600;margin:16px 0 8px}
+.fold h3:first-child{margin-top:0}
+.phase{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:10px 14px;border-radius:16px;background:var(--surface);margin-bottom:6px}
+.phase b{font-family:var(--f-display);font-weight:600}
+.phase span{font-size:12.5px;color:var(--muted)}
+.phase .n{grid-column:1/-1;font-size:13.5px;color:var(--muted)}
+.phase.cur{background:var(--lime);color:var(--lime-ink)} .phase.cur span{color:var(--lime-ink)}
+.phase.past{opacity:.5}
+.plan{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.plan label{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--surface);border-radius:14px;padding:6px 6px 6px 12px;font-weight:600;font-family:var(--f-display)}
+.plan input{width:100px;padding:7px 8px}
+.month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-top:10px}
+.month div{aspect-ratio:1;border-radius:10px;display:grid;place-items:center;font-size:12.5px;font-variant-numeric:tabular-nums;background:var(--surface);max-width:100%}
+.month .h{background:none;color:var(--muted);font-size:11px;aspect-ratio:auto}
+.month .e{background:none}
+.month .on{background:var(--lime);color:var(--lime-ink);font-weight:700}
+.month .miss{background:var(--warm);color:var(--warm-ink)}
+.month .now{box-shadow:inset 0 0 0 2px var(--ink)}
+.month .off{opacity:.45}
+.mhead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.mhead b{font-family:var(--f-display);text-transform:capitalize;text-align:center}
+.mhead button{appearance:none;border:0;background:var(--surface);width:34px;height:34px;border-radius:50%;cursor:pointer;font:inherit;color:var(--ink);flex:none}
+.banner{background:var(--warm);color:var(--ink);border-radius:18px;padding:12px 16px;font-size:13.5px}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:999px;font-size:14px;z-index:20;max-width:calc(100% - 32px)}
+@media (prefers-reduced-motion: reduce){.bar i{transition:none}.btn:hover{transform:none}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header><h1>Calendario Digiuno</h1></header>
+    <section class="card" id="now" aria-live="polite"></section>
+  <section class="card" id="week"></section>
+  <details class="card" id="infoBox"><summary>Prima di iniziare</summary><div class="fold" id="info"></div></details>
+  <details class="card"><summary>Storico del mese</summary><div class="fold" id="month"></div></details>
+  <details class="card"><summary>Orari di fine cena</summary><div class="fold" id="plan"></div></details>
+  <details class="card"><summary>Backup dei dati</summary><div class="fold">
+    <p class="muted" style="margin:0 0 12px;font-size:13.5px">I dati restano solo su questo dispositivo. Salva ogni tanto un backup, o usalo per passare i dati su un altro telefono.</p>
+    <div class="edit" style="margin:0"><button class="mini" data-act="export">Scarica backup</button><label class="mini" style="display:inline-flex;align-items:center;cursor:pointer">Ripristina backup<input type="file" id="importFile" accept="application/json,.json" hidden></label></div>
+  </div></details>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+const H=3600000;
+const DOW=['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+const DOWL=['lunedì','martedì','mercoledì','giovedì','venerdì','sabato','domenica'];
+const DEFAULT_PLAN=['20:00','20:30','20:30','20:30','20:30','21:30','20:30'];
+// Programma prudente: avvio graduale, mai oltre 16 ore. h[i] = ore che iniziano la sera di quel giorno (0 = lunedì).
+const PROGRAM={start:'2026-10-20',end:'2027-01-11',phases:[
+  {name:'Avvio',from:'2026-10-20',to:'2026-10-21',h:[12,12,12,12,12,12,12],note:'12 ore: niente spuntini dopo cena, colazione un po\' più tardi.'},
+  {name:'Adattamento',from:'2026-10-22',to:'2026-10-25',h:[14,14,14,14,14,14,14],note:'14 ore tutte le sere.'},
+  {name:'Consolidamento',from:'2026-10-26',to:'2026-11-15',h:[16,16,16,16,16,14,14],note:'16 ore da lunedì a venerdì, 14 nel weekend.'},
+  {name:'Mantenimento',from:'2026-11-16',to:'2027-01-11',h:[16,16,16,16,16,12,14],note:'16 ore nei giorni feriali, 14 la domenica, sabato libero. Liberi anche i giorni di festa.'}
+],free:{'2026-12-24':'Vigilia','2026-12-25':'Natale','2026-12-31':'San Silvestro','2027-01-01':'Capodanno'}};
+
+const S={settings:{plan:DEFAULT_PLAN},active:null,fasts:{},days:{}};
+let db=null, editStart=false, mView=null;
+
+const pad=n=>String(n).padStart(2,'0');
+const dkey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parseKey=k=>{const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d)};
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const hm=ts=>{const d=new Date(ts);return `${pad(d.getHours())}:${pad(d.getMinutes())}`};
+const dur=ms=>{ms=Math.max(0,ms);const h=Math.floor(ms/H),m=Math.floor(ms%H/60000);return h?`${h} h ${pad(m)} m`:`${m} min`};
+const dow=d=>(d.getDay()+6)%7;
+function dayWord(ts){const d=new Date(ts),k=dkey(d),t=dkey(new Date());if(k===t)return d.getHours()>=17?'stasera':'oggi';if(k===dkey(addDays(new Date(),1)))return 'domani';if(k===dkey(addDays(new Date(),-1)))return 'ieri';return DOWL[dow(d)]}
+function toInput(ts){const d=new Date(ts);return `${dkey(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,3000)}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function uid(){return 'f'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+
+const plan=()=>S.settings.plan||DEFAULT_PLAN;
+function phaseFor(k){return PROGRAM.phases.find(p=>k>=p.from&&k<=p.to)||null}
+function planned(k){const ph=phaseFor(k);if(!ph)return null;const d=parseKey(k);const t=plan()[dow(d)];if(!t)return null;
+  const fr=PROGRAM.free[k];const h=fr?12:ph.h[dow(d)];const [hh,mm]=t.split(':').map(Number);const st=new Date(d);st.setHours(hh,mm,0,0);
+  return {k,start:st.getTime(),end:st.getTime()+h*H,h,phase:ph,free:fr||(h<=12&&ph.name==='Mantenimento'?'Libero':null)}}
+function stateOf(p){if(!p)return null;const day=S.days[p.k]||{};
+  if(day.planDone)return 'done';
+  if(S.active&&Math.abs(S.active.start-p.start)<10*H)return 'running';
+  for(const f of Object.values(S.fasts)){if(f&&f.start&&f.end&&Math.abs(f.start-p.start)<10*H&&(f.end-f.start)>=.95*p.h*H)return 'done'}
+  if(Date.now()>p.end)return day.planSkip?'skip':'missed';
+  return 'todo'}
+function current(){
+  if(S.active){for(const i of [0,-1]){const p=planned(dkey(addDays(new Date(S.active.start),i)));if(p&&Math.abs(S.active.start-p.start)<10*H)return p}return null}
+  for(let i=-1;i<10;i++){const p=planned(dkey(addDays(new Date(),i)));if(p&&stateOf(p)==='todo'&&p.end>Date.now())return p}
+  return null}
+
+const LS='calendario-digiuno-v1';
+function loadLocal(){try{const o=JSON.parse(localStorage.getItem(LS)||'null');if(o){S.settings={plan:DEFAULT_PLAN,...(o.settings||{})};S.active=o.active||null;S.fasts=o.fasts||{};S.days=o.days||{}}}catch(e){}}
+function saveLocal(){try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}}
+const chains={};
+function q(path,fn){chains[path]=(chains[path]||Promise.resolve()).then(fn).catch(e=>toast('Salvataggio non riuscito'+(e&&e.code?` (${e.code})`:'')))}
+const save={settings:saveLocal,active:saveLocal,fast:saveLocal,day:saveLocal};
+const typing=el=>el.contains(document.activeElement)&&document.activeElement.tagName==='INPUT';
+
+function renderNow(){
+  const el=document.getElementById('now');if(typing(el))return;
+  const p=current();let h='';
+  if(S.active){
+    const tgt=S.active.target||(p?p.h:16), el2=Date.now()-S.active.start, end=S.active.start+tgt*H, r=Math.min(1,el2/(tgt*H));
+    h=`<span class="badge">Digiuno in corso · ${tgt} ore</span>
+      <h2 class="big">${r>=1?'Fatto! Puoi mangiare':'Puoi mangiare alle '+hm(end)}</h2>
+      <p class="muted" style="margin:0">${r>=1?'Hai completato '+tgt+' ore. Premi qui sotto quando fai il primo pasto.':'Mancano <b id="left">'+dur(end-Date.now())+'</b> · '+dayWord(end)}</p>
+      <div class="bar"><i id="pbar" style="width:${Math.round(r*100)}%"></i></div>
+      <p class="muted" style="margin:0 0 18px;font-size:13px">Iniziato ${dayWord(S.active.start)} alle ${hm(S.active.start)} · <span id="el">${dur(el2)}</span></p>
+      <button class="btn" data-act="end">Ho mangiato, termina</button>
+      ${editStart?`<div class="edit"><input type="datetime-local" id="startAt" value="${toInput(S.active.start)}" aria-label="Ora di inizio"><button class="mini" data-act="saveStart">Salva</button></div>`:''}
+      <div class="links"><button class="link" data-act="editStart">${editStart?'Chiudi':'Correggi l\'inizio'}</button><button class="link" data-act="cancel">Annulla digiuno</button></div>`;
+  } else if(p){
+    h=`<span class="badge">${p.phase.name} · ${p.h} ore${p.free?' · '+esc(p.free):''}</span>
+      <h2 class="big">Prossimo digiuno ${dayWord(p.start)}</h2>
+      <div class="times"><div class="t"><span>Smetti di mangiare</span><b>${hm(p.start)}</b><small>${dayWord(p.start)}</small></div>
+        <div class="t"><span>Torni a mangiare</span><b>${hm(p.end)}</b><small>${dayWord(p.end)}</small></div></div>
+      <button class="btn" data-act="start">Ho finito di mangiare, inizia</button>
+      ${editStart?`<div class="edit"><input type="datetime-local" id="startAt" value="${toInput(Date.now())}" aria-label="Ora dell'ultimo pasto"><button class="mini" data-act="startAt">Inizia da quest'ora</button></div>`:''}
+      <div class="links"><button class="link" data-act="editStart">${editStart?'Chiudi':'Ho finito di mangiare prima'}</button></div>`;
+  } else {
+    h=`<span class="badge">Programma completato</span><h2 class="big">Fai il punto</h2><p class="muted" style="margin:0">Hai concluso le 12 settimane. Valuta come ti senti, magari con il medico, e decidi se continuare.</p>`;
+  }
+  el.innerHTML=h;
+}
+
+function renderWeek(){
+  const el=document.getElementById('week');const t=new Date();const mon=addDays(t,-dow(t));const tk=dkey(t);
+  let rows='',done=0,due=0;
+  for(let i=0;i<7;i++){const d=addDays(mon,i),k=dkey(d),p=planned(k),st=stateOf(p),isT=k===tk,past=k<tk;
+    if(st==='done'||st==='missed'||st==='skip')due++; if(st==='done')done++;
+    const ic={done:'✓',missed:'!',skip:'–',running:'●'}[st]||'';
+    const cls={done:'on',missed:'miss',skip:'miss',running:'run'}[st]||'';
+    const auto=st==='done'&&!(S.days[k]||{}).planDone;
+    const can=p&&(st==='done'||st==='missed'||st==='skip')&&!auto;
+    const label={done:'Fatto',missed:'Non registrato: tocca il cerchio se l\'hai fatto',skip:'Saltato',running:'In corso'}[st]||(isT?'Da fare stasera':'Da fare');
+    rows+=`<div class="day ${isT?'today':''} ${past?'past':''}">
+      <div class="d"><b>${d.getDate()}</b><small>${DOW[i]}</small></div>
+      <div class="w">${p?`<b>${hm(p.start)} → ${hm(p.end)}</b> · ${p.h} h<small>${p.free?esc(p.free)+' · ':''}${label}</small>`:'<small>Nessun digiuno</small>'}</div>
+      ${p?`<button class="chk ${cls}" ${can?`data-chk="${k}"`:'disabled'} aria-label="${DOWL[i]}: ${label}">${ic}</button>`:'<span></span>'}
+    </div>`}
+  el.innerHTML=`<div class="head"><h2>Questa settimana</h2><span class="score">${done} su ${due} fatti</span></div><div class="days">${rows}</div>
+    <p class="legend">Il timer spunta da solo i digiuni completati. Per i giorni passati tocca il cerchio: fatto, saltato, da segnare.</p>`;
+}
+
+function renderInfo(){
+  const k=dkey(new Date());const f=x=>parseKey(x).toLocaleDateString('it-IT',{day:'numeric',month:'short'});
+  document.getElementById('info').innerHTML=`
+  <h3>Come si usa</h3>
+  <ul><li>Finita la cena premi <b>Ho finito di mangiare</b>: vedi subito a che ora potrai mangiare di nuovo.</li>
+  <li>Al primo pasto premi <b>Ho mangiato</b>: il giorno si spunta da solo.</li>
+  <li>Se dimentichi il timer, spunta il giorno a mano in <b>Questa settimana</b>.</li></ul>
+  <h3>Durante il digiuno</h3>
+  <ul><li>Sì: acqua, acqua frizzante, caffè e tè senza zucchero né latte. Bevi molto.</li>
+  <li>Rompi il digiuno con un pasto vero: proteine, verdure, carboidrati integrali. Niente abbuffate.</li>
+  <li>Nella finestra in cui mangi fai pasti completi: il digiuno non serve se la qualità del cibo è bassa.</li>
+  <li>Le prime 2–4 settimane un po' di fame la mattina è normale e passa.</li>
+  <li>Se hai giramenti di testa, debolezza forte o dormi male, mangia e torna alla fase precedente.</li>
+  <li>Con diabete, pressione bassa o farmaci da prendere a stomaco pieno, senti prima il medico.</li></ul>
+  <h3>Il tuo programma · 12 settimane</h3>
+  ${PROGRAM.phases.map(p=>`<div class="phase ${k>=p.from&&k<=p.to?'cur':k>p.to?'past':''}"><b>${p.name}</b><span>${f(p.from)} – ${f(p.to)}</span><span class="n">${esc(p.note)}</span></div>`).join('')}
+  <p class="muted" style="font-size:13px;margin:8px 0 0">Mai oltre 16 ore: è il livello più studiato e più sicuro. L'11 gennaio fai il punto e decidi se continuare.</p>`;
+}
+
+function renderMonth(){
+  const t=new Date();if(!mView)mView={y:t.getFullYear(),m:t.getMonth()};
+  const first=new Date(mView.y,mView.m,1),off=dow(first),n=new Date(mView.y,mView.m+1,0).getDate();
+  let cells=DOW.map(d=>`<div class="h">${d}</div>`).join('');
+  for(let i=0;i<off;i++)cells+='<div class="e"></div>';
+  let done=0;
+  for(let i=1;i<=n;i++){const d=new Date(mView.y,mView.m,i),k=dkey(d),p=planned(k),st=stateOf(p);if(st==='done')done++;
+    cells+=`<div class="${st==='done'?'on':st==='missed'?'miss':''} ${k===dkey(t)?'now':''} ${p?'':'off'}" title="${p?p.h+' ore':''}">${st==='done'?'✓':i}</div>`}
+  document.getElementById('month').innerHTML=`<div class="mhead"><button data-act="mPrev" aria-label="Mese precedente">←</button><b>${first.toLocaleDateString('it-IT',{month:'long',year:'numeric'})} · ${done} fatti</b><button data-act="mNext" aria-label="Mese successivo">→</button></div><div class="month">${cells}</div>`;
+}
+
+function renderPlan(){
+  const el=document.getElementById('plan');if(typing(el))return;
+  el.innerHTML=`<p class="muted" style="margin:0 0 12px;font-size:13.5px">L'ora in cui finisci di cenare: il digiuno parte da qui. Prima ceni, meglio è per il sonno e la digestione.</p>
+  <div class="plan">${DOW.map((d,i)=>`<label>${d}<input type="time" id="plan-${i}" value="${esc(plan()[i]||'')}"></label>`).join('')}</div>`;
+}
+
+function renderAll(){renderNow();renderWeek();renderInfo();renderMonth();renderPlan()}
+
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.chk){const k=b.dataset.chk,st=stateOf(planned(k)),day={...(S.days[k]||{})};
+    if(st==='done'){day.planDone=false;day.planSkip=true}else if(st==='skip'){day.planSkip=false;day.planDone=false}else{day.planDone=true;day.planSkip=false}
+    S.days[k]=day;save.day(k);renderAll();return}
+  const a=b.dataset.act;
+  if(a==='start'||a==='startAt'){let st=Date.now();if(a==='startAt'){const v=new Date(document.getElementById('startAt').value).getTime();if(isNaN(v)||v>Date.now()){toast('Scegli un orario già passato');return}st=v}
+    const p=current();S.active={start:st,target:p?p.h:16};editStart=false;save.active();renderAll();toast('Digiuno iniziato')}
+  else if(a==='end'){if(!S.active)return;const p=current();const id=uid(),end=Date.now(),tgt=S.active.target||16,ok=end-S.active.start>=.95*tgt*H;
+    S.fasts[id]={start:S.active.start,end,target:tgt};
+    if(p&&ok){S.days[p.k]={...(S.days[p.k]||{}),planDone:true,planSkip:false};save.day(p.k)}
+    const len=end-S.active.start;S.active=null;save.fast(id);save.active();renderAll();toast(ok?'Fatto! Buon pasto':'Registrato: '+dur(len))}
+  else if(a==='editStart'){editStart=!editStart;renderNow()}
+  else if(a==='saveStart'){const v=new Date(document.getElementById('startAt').value).getTime();if(isNaN(v)||v>Date.now()){toast('Scegli un orario già passato');return}
+    S.active={...S.active,start:v};editStart=false;save.active();renderAll()}
+  else if(a==='cancel'){if(b.dataset.armed){S.active=null;save.active();renderAll();toast('Digiuno annullato')}else{b.dataset.armed='1';b.textContent='Tocca di nuovo per annullare';setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent='Annulla digiuno'}},3000)}}
+  else if(a==='export'){const blob=new Blob([JSON.stringify({app:'calendario-digiuno',version:1,exported:new Date().toISOString(),data:S},null,2)],{type:'application/json'});
+    const u=URL.createObjectURL(blob),ln=document.createElement('a');ln.href=u;ln.download='digiuno-backup-'+dkey(new Date())+'.json';document.body.appendChild(ln);ln.click();ln.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);toast('Backup scaricato')}
+  else if(a==='mPrev'){mView.m--;if(mView.m<0){mView.m=11;mView.y--}renderMonth()}
+  else if(a==='mNext'){mView.m++;if(mView.m>11){mView.m=0;mView.y++}renderMonth()}
+});
+document.addEventListener('change',e=>{if(e.target.id==='importFile'){const f=e.target.files[0];if(!f)return;f.text().then(t=>{const o=JSON.parse(t);const d=o.data||o;if(!d||typeof d!=='object'||!('fasts' in d))throw 0;
+    S.settings={plan:DEFAULT_PLAN,...(d.settings||{})};S.active=d.active||null;S.fasts=d.fasts||{};S.days=d.days||{};saveLocal();renderAll();toast('Backup ripristinato')}).catch(()=>toast('File di backup non valido'));e.target.value='';return}
+  const m=/^plan-(\d)$/.exec(e.target.id);if(!m)return;
+  const p=[...plan()];p[+m[1]]=e.target.value||DEFAULT_PLAN[+m[1]];S.settings={...S.settings,plan:p};save.settings();renderNow();renderWeek();renderMonth()});
+
+let wasDone=false;
+setInterval(()=>{
+  if(S.active){const tgt=S.active.target||16,el2=Date.now()-S.active.start,end=S.active.start+tgt*H;
+    const pb=document.getElementById('pbar'),lf=document.getElementById('left'),et=document.getElementById('el');
+    if(pb)pb.style.width=Math.round(Math.min(1,el2/(tgt*H))*100)+'%';if(lf)lf.textContent=dur(end-Date.now());if(et)et.textContent=dur(el2);
+    const d=el2>=tgt*H;if(d!==wasDone){wasDone=d;renderNow()}}
+  if(Date.now()%60000<1000){renderNow();renderWeek()}
+},1000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)renderAll()});
+
+renderAll();
+loadLocal();renderAll();
+if(!Object.keys(S.fasts).length)document.getElementById('infoBox').open=true;
+window.addEventListener('storage',e=>{if(e.key===LS){loadLocal();renderAll()}});
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+})();
+</script>
+
+</body>
+</html>
